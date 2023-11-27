@@ -46,7 +46,7 @@ class cfg:
     # binary, mutliclass, multilabel, regression
     model_type = 'convbert'
     # linear, linear_backbone, convbert, convbert_backbone
-    peft = True
+    peft = False
     cls = False     # embed type cls, average, full
     average = False
     full = True # if full batch_size must be 1
@@ -64,9 +64,9 @@ class cfg:
     grad_accum = 16
     weight_decay = 0.01
     fp16 = False
-    trainer_epochs = 1
+    trainer_epochs = 200
     trim_len = False # trim length of seqs when loading datasets
-    patience = 1
+    patience = 10
     max_length = None
     r = 64 # Lora
     lora_alpha = 128
