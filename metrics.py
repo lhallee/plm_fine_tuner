@@ -4,6 +4,7 @@ from sklearn.metrics import accuracy_score, mean_squared_error, r2_score, f1_sco
 from transformers import EvalPrediction
 from scipy.stats import spearmanr
 
+
 def count_f1_max(pred, target):
     """
         F1 score with the optimal threshold, Copied from TorchDrug.
@@ -96,18 +97,25 @@ def regression_metrics(predictions, labels):
     return metrics
 
 
-def compute_metrics(cfg, p: EvalPrediction):
+def compute_classification_metrics(p: EvalPrediction):
     preds = p.predictions[0] if isinstance(p.predictions, tuple) else p.predictions
-    if cfg.task_type == 'regression':
-        result = regression_metrics(
+    result = classification_metrics(
         predictions=preds,
         labels=p.label_ids)
-    elif cfg.task_type == 'multilabel':
-        result = multilabel_metrics(
-        predictions=preds,
-        labels=p.label_ids)
-    else:
-        result = classification_metrics(
-            predictions=preds,
-            labels=p.label_ids)
+    return result
+
+
+def compute_multilabel_metrics(p: EvalPrediction):
+    preds = p.predictions[0] if isinstance(p.predictions, tuple) else p.predictions
+    result = multilabel_metrics(
+    predictions=preds,
+    labels=p.label_ids)
+    return result
+
+
+def compute_regression_metrics(p: EvalPrediction):
+    preds = p.predictions[0] if isinstance(p.predictions, tuple) else p.predictions
+    result = regression_metrics(
+    predictions=preds,
+    labels=p.label_ids)
     return result

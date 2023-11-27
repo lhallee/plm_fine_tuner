@@ -1,5 +1,6 @@
 from transformers import Trainer, TrainingArguments, EarlyStoppingCallback
-from metrics import compute_metrics
+from metrics import *
+
 
 def train(model, train_dataset, valid_dataset, cfg, data_collator=None):
     training_args = TrainingArguments(
@@ -29,7 +30,8 @@ def train(model, train_dataset, valid_dataset, cfg, data_collator=None):
         args=training_args,
         train_dataset=train_dataset,
         eval_dataset=valid_dataset,
-        compute_metrics=compute_metrics(cfg=cfg),
+        compute_metrics=lambda p: compute_regression_metrics(p) if cfg.task_type == 'regression' else (
+            compute_multilabel_metrics(p) if cfg.task_type == 'multilabel' else compute_classification_metrics(p)),
         data_collator=data_collator,
         callbacks=[EarlyStoppingCallback(early_stopping_patience=cfg.patience)]
     )
