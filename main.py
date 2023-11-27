@@ -76,49 +76,6 @@ class cfg:
     seed = 7
     test = False
 
-    @classmethod
-    def is_initialized(cls):
-        # Check for the initialization conditions, e.g.,
-        return cls.project_name is not None
-
-    @classmethod
-    def update_config(cls, args):
-        if not cls.is_initialized():
-            raise Exception("Configuration is not properly initialized")
-        cfg.project_name = args.project_name
-        cfg.wandb_api_key = args.wandb_api_key
-        cfg.use_wandb = args.use_wandb
-        cfg.model_path = args.model_path
-        cfg.T5 = args.T5
-        cfg.weight_path = args.weight_path
-        cfg.data_path = args.data_path
-        cfg.output_dir = args.output_dir
-        cfg.log_dir = args.log_dir
-        cfg.task_type = args.task_type
-        cfg.model_type = args.model_type
-        cfg.peft = args.peft
-        cfg.cls = args.cls
-        cfg.average = args.average
-        cfg.full = args.full
-        cfg.hidden_dim = args.hidden_dim
-        cfg.dropout = args.dropout
-        cfg.num_layers = args.num_layers
-        cfg.nhead = args.nhead
-        cfg.kernel = args.kernel
-        cfg.pooling = args.pooling
-        cfg.lr = args.lr
-        cfg.batch_size = args.batch_size
-        cfg.grad_accum = args.grad_accum
-        cfg.weight_decay = args.weight_decay
-        cfg.fp16 = args.fp16
-        cfg.trainer_epochs = args.trainer_epochs
-        cfg.trim_len = args.trim_len
-        cfg.patience = args.patience
-        cfg.max_length = args.max_length
-        cfg.r = args
-        cfg.seed = args.seed
-        cfg.test = args.test
-
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Configurations for the model.')
@@ -239,9 +196,43 @@ def main():
     log_results(metrics_output)
 
 
+args = parse_args()
+cfg.project_name = args.project_name
+cfg.wandb_api_key = args.wandb_api_key
+cfg.use_wandb = args.use_wandb
+cfg.model_path = args.model_path
+cfg.T5 = args.T5
+cfg.weight_path = args.weight_path
+cfg.data_path = args.data_path
+cfg.output_dir = args.output_dir
+cfg.log_dir = args.log_dir
+cfg.task_type = args.task_type
+cfg.model_type = args.model_type
+cfg.peft = args.peft
+cfg.cls = args.cls
+cfg.average = args.average
+cfg.full = args.full
+cfg.hidden_dim = args.hidden_dim
+cfg.dropout = args.dropout
+cfg.num_layers = args.num_layers
+cfg.nhead = args.nhead
+cfg.kernel = args.kernel
+cfg.pooling = args.pooling
+cfg.lr = args.lr
+cfg.batch_size = args.batch_size
+cfg.grad_accum = args.grad_accum
+cfg.weight_decay = args.weight_decay
+cfg.fp16 = args.fp16
+cfg.trainer_epochs = args.trainer_epochs
+cfg.trim_len = args.trim_len
+cfg.patience = args.patience
+cfg.max_length = args.max_length
+cfg.r = args
+cfg.seed = args.seed
+cfg.test = args.test
+
+
 if __name__ == "__main__":
-    args = parse_args()
-    cfg.update_config(args)
     from trainer import train
     from dataset_zoo import *
     from model_zoo import *
