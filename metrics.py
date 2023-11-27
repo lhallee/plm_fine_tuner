@@ -96,10 +96,14 @@ def regression_metrics(predictions, labels):
     return metrics
 
 
-def compute_metrics(p: EvalPrediction):
+def compute_metrics(cfg, p: EvalPrediction):
     preds = p.predictions[0] if isinstance(p.predictions, tuple) else p.predictions
     if cfg.task_type == 'regression':
         result = regression_metrics(
+        predictions=preds,
+        labels=p.label_ids)
+    elif cfg.task_type == 'multilabel':
+        result = multilabel_metrics(
         predictions=preds,
         labels=p.label_ids)
     else:

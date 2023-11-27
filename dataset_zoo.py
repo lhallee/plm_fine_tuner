@@ -12,9 +12,7 @@ def embed_dataset(model, tokenizer, sequences, cfg):
             ids = tokenizer(sample,
                             add_special_tokens=True,
                             padding=False,
-                            max_length=cfg.max_length,
                             return_token_type_ids=False,
-                            truncation=True,
                             return_tensors='pt').input_ids.to(cfg.device)
             output = model(ids)
             if cfg.cls:

@@ -29,7 +29,7 @@ def train(model, train_dataset, valid_dataset, cfg, data_collator=None):
         args=training_args,
         train_dataset=train_dataset,
         eval_dataset=valid_dataset,
-        compute_metrics=compute_metrics,
+        compute_metrics=compute_metrics(cfg=cfg),
         data_collator=data_collator,
         callbacks=[EarlyStoppingCallback(early_stopping_patience=cfg.patience)]
     )
