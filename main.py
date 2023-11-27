@@ -9,6 +9,7 @@ from trainer import train
 from dataset_zoo import *
 from model_zoo import *
 
+
 def log_results(results):
     keys_to_exclude = {'test_runtime', 'test_samples_per_second', 'test_steps_per_second'}
     filtered_results = {k: v for k, v in results.items() if k not in keys_to_exclude}

@@ -1,8 +1,7 @@
 from transformers import Trainer, TrainingArguments, EarlyStoppingCallback
 from metrics import compute_metrics
-from main import cfg
 
-def train(model, train_dataset, valid_dataset, data_collator=None):
+def train(model, train_dataset, valid_dataset, cfg, data_collator=None):
     training_args = TrainingArguments(
         output_dir=cfg.output_dir,
         report_to='wandb' if cfg.use_wandb else None,
