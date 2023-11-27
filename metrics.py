@@ -2,7 +2,7 @@ import torch
 from torch.nn import functional as F
 from sklearn.metrics import accuracy_score, mean_squared_error, r2_score, f1_score, recall_score, precision_score
 from transformers import EvalPrediction
-
+from main import cfg
 
 def count_f1_max(pred, target):
     """

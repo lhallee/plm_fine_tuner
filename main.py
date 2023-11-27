@@ -5,9 +5,6 @@ import random
 import torch
 import numpy as np
 from transformers import AutoModel, AutoTokenizer
-from trainer import train
-from dataset_zoo import *
-from model_zoo import *
 
 
 def log_results(results):
@@ -34,15 +31,15 @@ def log_results(results):
 
 class cfg:
     project_name = 'test' # wandb
-    wandb_api_key = '3f3442d99b50b81276eaa2a8a37c14c05b90b29b'
+    wandb_api_key = None
     use_wandb = False
     model_path = 'facebook/esm2_t6_8M_UR50D' # paths
     T5 = False
     weight_path = None
-    data_path = 'lhallee/EC_reg'
+    data_path = 'lhallee/Thermostability_reg'
     output_dir = './out'
     log_dir = './log.csv'
-    task_type = 'multilabel' # settings
+    task_type = 'regression' # settings
     # binary, mutliclass, multilabel, regression, peft
     model_type = 'convbert'
     # linear, linear_backbone, convbert, convbert_backbone
@@ -63,7 +60,7 @@ class cfg:
     batch_size = 1
     grad_accum = 16
     weight_decay = 0.01
-    fp16 = True
+    fp16 = False
     trainer_epochs = 200
     trim_len = False # trim length of seqs when loading datasets
     patience = 10
@@ -77,46 +74,49 @@ class cfg:
     hyper_epochs = 1 # number of hyperparameter epochs
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     seed = 7
+    test = True
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Configurations for the model.')
     parser.add_argument('--project_name', default=cfg.project_name, type=str)
     parser.add_argument('--wandb_api_key', default=cfg.wandb_api_key, type=str)
-    parser.add_argument('--use_wandb', action='store_false')
+    parser.add_argument('--use_wandb', default=cfg.use_wandb, type=bool)
     parser.add_argument('--model_path', default=cfg.model_path, type=str)
-    parser.add_argument('--T5', action='store_false')
+    parser.add_argument('--T5', default=cfg.T5, type=bool)
     parser.add_argument('--weight_path', default=cfg.weight_path, type=str)
     parser.add_argument('--data_path', default=cfg.data_path, type=str)
     parser.add_argument('--output_dir', default=cfg.output_dir, type=str)
     parser.add_argument('--log_dir', default=cfg.log_dir, type=str)
     parser.add_argument('--task_type', default=cfg.task_type, type=str)
     parser.add_argument('--model_type', default=cfg.model_type, type=str)
-    parser.add_argument('--peft', action='store_false')
-    parser.add_argument('--cls', action='store_false')
-    parser.add_argument('--average', action='store_false')
-    parser.add_argument('--full', action='store_true')
+    parser.add_argument('--peft', default=cfg.peft, type=bool)
+    parser.add_argument('--cls', default=cfg.cls, type=bool)
+    parser.add_argument('--average', default=cfg.average, type=bool)
+    parser.add_argument('--full', default=cfg.full, type=bool)
     parser.add_argument('--hidden_dim', default=cfg.hidden_dim, type=int)
     parser.add_argument('--dropout', default=cfg.dropout, type=float)
     parser.add_argument('--num_layers', default=cfg.num_layers, type=int)
     parser.add_argument('--nhead', default=cfg.nhead, type=int)
-    parser.add_argument('--kernel', default=cfg.kernel, type=int)
     parser.add_argument('--pooling', default=cfg.pooling, type=str)
     parser.add_argument('--lr', default=cfg.lr, type=float)
     parser.add_argument('--batch_size', default=cfg.batch_size, type=int)
     parser.add_argument('--grad_accum', default=cfg.grad_accum, type=int)
     parser.add_argument('--weight_decay', default=cfg.weight_decay, type=float)
-    parser.add_argument('--fp16', action='store_false')
+    parser.add_argument('--fp16', default=cfg.fp16, type=bool)
     parser.add_argument('--trainer_epochs', default=cfg.trainer_epochs, type=int)
-    parser.add_argument('--trim_len', action='store_false')
+    parser.add_argument('--trim_len', default=cfg.trim_len, type=bool)
     parser.add_argument('--patience', default=cfg.patience, type=int)
     parser.add_argument('--max_length', default=cfg.max_length, type=int)
     parser.add_argument('--r', default=cfg.r, type=int)
     parser.add_argument('--lora_alpha', default=cfg.lora_alpha, type=int)
-    parser.add_argument('--target_modules', nargs='+', default=cfg.target_modules)
+    parser.add_argument('--target_modules', nargs='+', default=cfg.target_modules, type=str)
     parser.add_argument('--lora_dropout', default=cfg.lora_dropout, type=float)
     parser.add_argument('--bias', default=cfg.bias, type=str)
     parser.add_argument('--count', default=cfg.count, type=int)
     parser.add_argument('--hyper_epochs', default=cfg.hyper_epochs, type=int)
+    parser.add_argument('--seed', default=cfg.seed, type=int)
+    parser.add_argument('--kernel', default=cfg.kernel, type=int)
+    parser.add_argument('--test', default=cfg.test, type=bool)
     return parser.parse_args()
 
 
@@ -153,6 +153,8 @@ def update_cfg():
     cfg.patience = args.patience
     cfg.max_length = args.max_length
     cfg.r = args
+    cfg.seed = args.seed
+    cfg.test = args.test
 
 
 def main():
@@ -204,12 +206,20 @@ def main():
         train_seqs, train_labels = get_seqs(train_data)
         valid_seqs, valid_labels = get_seqs(valid_data)
         test_seqs, test_labels = get_seqs(test_data)
-        train_embds = embed_dataset(backbone, tokenizer, train_seqs)
-        valid_embds = embed_dataset(backbone, tokenizer, valid_seqs)
-        test_embds = embed_dataset(backbone, tokenizer, test_seqs)
-        train_dataset = FineTuneDatasetEmbeds(train_embds, train_labels)
-        valid_dataset = FineTuneDatasetEmbeds(valid_embds, valid_labels)
-        test_dataset = FineTuneDatasetEmbeds(test_embds, test_labels)
+        if cfg.test:
+            train_embds = embed_dataset(backbone, tokenizer, train_seqs[:2])
+            valid_embds = embed_dataset(backbone, tokenizer, valid_seqs[:2])
+            test_embds = embed_dataset(backbone, tokenizer, test_seqs[:2])
+            train_dataset = FineTuneDatasetEmbeds(train_embds, train_labels[:2])
+            valid_dataset = FineTuneDatasetEmbeds(valid_embds, valid_labels[:2])
+            test_dataset = FineTuneDatasetEmbeds(test_embds, test_labels[:2])
+        else:
+            train_embds = embed_dataset(backbone, tokenizer, train_seqs)
+            valid_embds = embed_dataset(backbone, tokenizer, valid_seqs)
+            test_embds = embed_dataset(backbone, tokenizer, test_seqs)
+            train_dataset = FineTuneDatasetEmbeds(train_embds, train_labels)
+            valid_dataset = FineTuneDatasetEmbeds(valid_embds, valid_labels)
+            test_dataset = FineTuneDatasetEmbeds(test_embds, test_labels)
     else:
         train_dataset = FineTuneDatasetCollator(train_data)
         valid_dataset = FineTuneDatasetCollator(valid_data)
@@ -219,11 +229,14 @@ def main():
 
     trainer = train(model, train_dataset, valid_dataset, data_collator=datacollator)
     predictions, labels, metrics_output = trainer.predict(test_dataset)
-    log_results(cfg, metrics_output)
+    log_results(metrics_output)
 
 
 if __name__ == "__main__":
     update_cfg()
+    from trainer import train
+    from dataset_zoo import *
+    from model_zoo import *
     torch.manual_seed(cfg.seed)
     np.random.seed(cfg.seed)
     random.seed(cfg.seed)

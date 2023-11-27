@@ -4,6 +4,7 @@ from torch import nn
 from torch.nn import functional as F
 from functools import partial
 from transformers.modeling_outputs import SequenceClassifierOutput, TokenClassifierOutput
+from main import cfg
 
 
 """

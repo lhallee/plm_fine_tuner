@@ -2,7 +2,7 @@ import torch
 from torch import nn
 from transformers.modeling_outputs import SequenceClassifierOutput
 from convberts import *
-
+from main import cfg
 
 def get_loss_fct(task_type):
     if task_type == 'multiclass':

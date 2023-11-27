@@ -3,7 +3,7 @@ import numpy as np
 from datasets import load_dataset
 from torch.utils import data
 from tqdm.auto import tqdm
-
+from main import cfg
 
 def embed_dataset(model, tokenizer, sequences):
     model.eval()
