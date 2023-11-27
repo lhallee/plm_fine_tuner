@@ -3,7 +3,6 @@ from torch.nn import functional as F
 from sklearn.metrics import accuracy_score, mean_squared_error, r2_score, f1_score, recall_score, precision_score
 from transformers import EvalPrediction
 from scipy.stats import spearmanr
-from main import cfg
 
 def count_f1_max(pred, target):
     """
@@ -50,16 +49,11 @@ def count_f1_max(pred, target):
 def classification_metrics(predictions, labels):
     preds = torch.tensor(predictions)
     y_true = torch.tensor(labels, dtype=torch.float)
-    if cfg.task_type == 'multilabel':
-        fmax, best_precision, best_recall = count_f1_max(preds, y_true)
-        probs = torch.sigmoid(preds)
-        y_pred = (probs >= 0.5).int().cpu().numpy()
-    else:
-        probs = F.softmax(preds, dim=-1)
-        y_pred = (probs >= 0.5).int().cpu().numpy()
-        fmax = f1_score(y_true, y_pred, average='weighted')
-        best_precision = precision_score(y_true, y_pred, average='weighted')
-        best_recall = recall_score(y_true, y_pred, average='weighted')
+    probs = F.softmax(preds, dim=-1)
+    y_pred = (probs >= 0.5).int().cpu().numpy()
+    fmax = f1_score(y_true, y_pred, average='weighted')
+    best_precision = precision_score(y_true, y_pred, average='weighted')
+    best_recall = recall_score(y_true, y_pred, average='weighted')
     accuracy = accuracy_score(y_true, y_pred)
     metrics = {
         'f1': fmax,
@@ -70,17 +64,29 @@ def classification_metrics(predictions, labels):
     return metrics
 
 
+def multilabel_metrics(predictions, labels):
+    preds = torch.tensor(predictions)
+    y_true = torch.tensor(labels, dtype=torch.float)
+    fmax, best_precision, best_recall = count_f1_max(preds, y_true)
+    probs = torch.sigmoid(preds)
+    y_pred = (probs >= 0.5).int().cpu().numpy()
+    accuracy = accuracy_score(y_true, y_pred)
+    metrics = {
+        'f1': fmax,
+        'precision': best_precision,
+        'recall': best_recall,
+        'accuracy': accuracy,
+    }
+    return metrics
+
 def regression_metrics(predictions, labels):
     preds = torch.tensor(predictions)
     y_true = torch.tensor(labels, dtype=torch.float32)
-
     preds_np = preds.cpu().numpy()
     y_true_np = y_true.cpu().numpy()
-
     mse = mean_squared_error(y_true_np, preds_np)
     r2 = r2_score(y_true_np, preds_np)
     spearman_corr, pval = spearmanr(y_true_np, preds_np)
-
     metrics = {
         'MSE': mse,
         'R2': r2,

@@ -2,7 +2,6 @@ import torch
 from torch import nn
 from transformers.modeling_outputs import SequenceClassifierOutput
 from convberts import *
-from main import cfg
 
 def get_loss_fct(task_type):
     if task_type == 'multiclass':
@@ -17,7 +16,7 @@ def get_loss_fct(task_type):
 
 
 class LinearClassifier(nn.Module):
-    def __init__(self):
+    def __init__(self, cfg):
         super().__init__()
         self.gelu = nn.GELU()
         self.dropout = nn.Dropout(cfg.dropout)
@@ -47,7 +46,7 @@ class LinearClassifier(nn.Module):
 
 
 class ClassificationHead(nn.Module):
-    def __init__(self):
+    def __init__(self, cfg):
         super().__init__()
         self.dense = nn.Linear(cfg.hidden_size, cfg.hidden_size)
         self.out_proj = nn.Linear(cfg.hidden_size, cfg.num_labels)
@@ -60,10 +59,10 @@ class ClassificationHead(nn.Module):
 
 
 class LinearHeadWithBackbone(nn.Module):
-    def __init__(self, backbone):
+    def __init__(self, backbone, cfg):
         super().__init__()
         self.backbone = backbone
-        self.classification_head = ClassificationHead()
+        self.classification_head = ClassificationHead(cfg)
         self.loss_fct = get_loss_fct(cfg.task_type)
         self.num_labels = cfg.num_labels
 
@@ -81,16 +80,16 @@ class LinearHeadWithBackbone(nn.Module):
 
 
 class ConvBert(nn.Module):
-    def __init__(self):
+    def __init__(self, cfg):
         super().__init__()
         if cfg.task_type == 'binary':
-            self.model = ConvBertForBinaryClassification()
+            self.model = ConvBertForBinaryClassification(cfg)
         elif cfg.task_type == 'multiclass':
-            self.model = ConvBertForMultiClassClassification()
+            self.model = ConvBertForMultiClassClassification(cfg)
         elif cfg.task_type == 'multilabel':
-            self.model = ConvBertForMultiLabelClassification()
+            self.model = ConvBertForMultiLabelClassification(cfg)
         elif cfg.task_type == 'regression':
-            self.model = ConvBertForRegression()
+            self.model = ConvBertForRegression(cfg)
         else:
             print('You did not pass a correct task type:\n binary , multiclass , multilabel , regression')
 
@@ -100,11 +99,11 @@ class ConvBert(nn.Module):
 
 
 class ConvBertWithBackbone(nn.Module):
-    def __init__(self, backbone):
+    def __init__(self, backbone, cfg):
         super().__init__()
         self.backbone = backbone
         input_dim = self.backbone.config.hidden_size
-        self.convbert = ConvBert()
+        self.convbert = ConvBert(cfg)
 
     def forward(self, input_ids, attention_mask, labels=None):
         embeddings = self.backbone(

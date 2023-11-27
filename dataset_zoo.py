@@ -3,9 +3,8 @@ import numpy as np
 from datasets import load_dataset
 from torch.utils import data
 from tqdm.auto import tqdm
-from main import cfg
 
-def embed_dataset(model, tokenizer, sequences):
+def embed_dataset(model, tokenizer, sequences, cfg):
     model.eval()
     inputs_embedding = []
     with torch.no_grad():
@@ -39,7 +38,7 @@ def embed_dataset(model, tokenizer, sequences):
 
 
 class FineTuneDatasetEmbeds(data.Dataset):
-    def __init__(self, embeddings, labels):
+    def __init__(self, embeddings, labels, cfg):
         self.embeddings = embeddings
         self.labels = labels
         self.task_type = cfg.task_type
@@ -62,7 +61,7 @@ class FineTuneDatasetEmbeds(data.Dataset):
 
 
 class FineTuneDatasetCollator(data.Dataset):
-    def __init__(self, ds):
+    def __init__(self, ds, cfg):
         self.ds = ds
         self.task_type = cfg.task_type
         self.num_classes = cfg.num_labels
@@ -100,7 +99,7 @@ def collate_fn(tokenizer):
     return _collate_fn
 
 
-def get_data():
+def get_data(cfg):
     dataset = load_dataset(cfg.data_path)
     train_set = dataset['train']
     valid_set = dataset['valid']

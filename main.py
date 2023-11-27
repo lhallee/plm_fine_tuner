@@ -5,7 +5,9 @@ import random
 import torch
 import numpy as np
 from transformers import AutoModel, AutoTokenizer
-
+from trainer import train
+from dataset_zoo import *
+from model_zoo import *
 
 def log_results(results):
     keys_to_exclude = {'test_runtime', 'test_samples_per_second', 'test_steps_per_second'}
@@ -124,7 +126,7 @@ def parse_args():
 def main():
     embed = False
     datacollator = None
-    train_data, valid_data, test_data = get_data()
+    train_data, valid_data, test_data = get_data(cfg)
     if cfg.peft:
         from peft import LoraConfig, get_peft_model, TaskType
         from transformers import AutoModelForSequenceClassification
@@ -156,14 +158,14 @@ def main():
     if cfg.peft == False:
         if cfg.model_type == 'linear':
             embed = True
-            model = LinearClassifier()
+            model = LinearClassifier(cfg)
         elif cfg.model_type == 'linear_backbone':
-            model = LinearHeadWithBackbone(backbone=backbone)
+            model = LinearHeadWithBackbone(backbone=backbone, cfg=cfg)
         elif cfg.model_type == 'convbert':
             embed = True
-            model = ConvBert()
+            model = ConvBert(cfg)
         elif cfg.model_type == 'convbert_backbone':
-            model = ConvBertWithBackbone(backbone=backbone)
+            model = ConvBertWithBackbone(backbone=backbone, cfg=cfg)
         else:
             print('Incorrect model type')
     if embed:
@@ -171,71 +173,66 @@ def main():
         valid_seqs, valid_labels = get_seqs(valid_data)
         test_seqs, test_labels = get_seqs(test_data)
         if cfg.test:
-            train_embds = embed_dataset(backbone, tokenizer, train_seqs[:2])
-            valid_embds = embed_dataset(backbone, tokenizer, valid_seqs[:2])
-            test_embds = embed_dataset(backbone, tokenizer, test_seqs[:2])
-            train_dataset = FineTuneDatasetEmbeds(train_embds, train_labels[:2])
-            valid_dataset = FineTuneDatasetEmbeds(valid_embds, valid_labels[:2])
-            test_dataset = FineTuneDatasetEmbeds(test_embds, test_labels[:2])
+            train_embds = embed_dataset(backbone, tokenizer, train_seqs[:2], cfg)
+            valid_embds = embed_dataset(backbone, tokenizer, valid_seqs[:2], cfg)
+            test_embds = embed_dataset(backbone, tokenizer, test_seqs[:2], cfg)
+            train_dataset = FineTuneDatasetEmbeds(train_embds, train_labels[:2], cfg)
+            valid_dataset = FineTuneDatasetEmbeds(valid_embds, valid_labels[:2], cfg)
+            test_dataset = FineTuneDatasetEmbeds(test_embds, test_labels[:2], cfg)
         else:
-            train_embds = embed_dataset(backbone, tokenizer, train_seqs)
-            valid_embds = embed_dataset(backbone, tokenizer, valid_seqs)
-            test_embds = embed_dataset(backbone, tokenizer, test_seqs)
-            train_dataset = FineTuneDatasetEmbeds(train_embds, train_labels)
-            valid_dataset = FineTuneDatasetEmbeds(valid_embds, valid_labels)
-            test_dataset = FineTuneDatasetEmbeds(test_embds, test_labels)
+            train_embds = embed_dataset(backbone, tokenizer, train_seqs, cfg)
+            valid_embds = embed_dataset(backbone, tokenizer, valid_seqs, cfg)
+            test_embds = embed_dataset(backbone, tokenizer, test_seqs, cfg)
+            train_dataset = FineTuneDatasetEmbeds(train_embds, train_labels, cfg)
+            valid_dataset = FineTuneDatasetEmbeds(valid_embds, valid_labels, cfg)
+            test_dataset = FineTuneDatasetEmbeds(test_embds, test_labels, cfg)
     else:
-        train_dataset = FineTuneDatasetCollator(train_data)
-        valid_dataset = FineTuneDatasetCollator(valid_data)
-        test_dataset = FineTuneDatasetCollator(test_data)
+        train_dataset = FineTuneDatasetCollator(train_data, cfg)
+        valid_dataset = FineTuneDatasetCollator(valid_data, cfg)
+        test_dataset = FineTuneDatasetCollator(test_data, cfg)
         datacollator = collate_fn(tokenizer)
         backbone.train()
 
-    trainer = train(model, train_dataset, valid_dataset, data_collator=datacollator)
+    trainer = train(model, train_dataset, valid_dataset, cfg=cfg, data_collator=datacollator)
     predictions, labels, metrics_output = trainer.predict(test_dataset)
     log_results(metrics_output)
 
 
-args = parse_args()
-cfg.project_name = args.project_name
-cfg.wandb_api_key = args.wandb_api_key
-cfg.use_wandb = args.use_wandb
-cfg.model_path = args.model_path
-cfg.T5 = args.T5
-cfg.weight_path = args.weight_path
-cfg.data_path = args.data_path
-cfg.output_dir = args.output_dir
-cfg.log_dir = args.log_dir
-cfg.task_type = args.task_type
-cfg.model_type = args.model_type
-cfg.peft = args.peft
-cfg.cls = args.cls
-cfg.average = args.average
-cfg.full = args.full
-cfg.hidden_dim = args.hidden_dim
-cfg.dropout = args.dropout
-cfg.num_layers = args.num_layers
-cfg.nhead = args.nhead
-cfg.kernel = args.kernel
-cfg.pooling = args.pooling
-cfg.lr = args.lr
-cfg.batch_size = args.batch_size
-cfg.grad_accum = args.grad_accum
-cfg.weight_decay = args.weight_decay
-cfg.fp16 = args.fp16
-cfg.trainer_epochs = args.trainer_epochs
-cfg.trim_len = args.trim_len
-cfg.patience = args.patience
-cfg.max_length = args.max_length
-cfg.r = args
-cfg.seed = args.seed
-cfg.test = args.test
-
-
 if __name__ == "__main__":
-    from trainer import train
-    from dataset_zoo import *
-    from model_zoo import *
+    args = parse_args()
+    cfg.project_name = args.project_name
+    cfg.wandb_api_key = args.wandb_api_key
+    cfg.use_wandb = args.use_wandb
+    cfg.model_path = args.model_path
+    cfg.T5 = args.T5
+    cfg.weight_path = args.weight_path
+    cfg.data_path = args.data_path
+    cfg.output_dir = args.output_dir
+    cfg.log_dir = args.log_dir
+    cfg.task_type = args.task_type
+    cfg.model_type = args.model_type
+    cfg.peft = args.peft
+    cfg.cls = args.cls
+    cfg.average = args.average
+    cfg.full = args.full
+    cfg.hidden_dim = args.hidden_dim
+    cfg.dropout = args.dropout
+    cfg.num_layers = args.num_layers
+    cfg.nhead = args.nhead
+    cfg.kernel = args.kernel
+    cfg.pooling = args.pooling
+    cfg.lr = args.lr
+    cfg.batch_size = args.batch_size
+    cfg.grad_accum = args.grad_accum
+    cfg.weight_decay = args.weight_decay
+    cfg.fp16 = args.fp16
+    cfg.trainer_epochs = args.trainer_epochs
+    cfg.trim_len = args.trim_len
+    cfg.patience = args.patience
+    cfg.max_length = args.max_length
+    cfg.r = args
+    cfg.seed = args.seed
+    cfg.test = args.test
     torch.manual_seed(cfg.seed)
     np.random.seed(cfg.seed)
     random.seed(cfg.seed)

@@ -4,7 +4,6 @@ from torch import nn
 from torch.nn import functional as F
 from functools import partial
 from transformers.modeling_outputs import SequenceClassifierOutput, TokenClassifierOutput
-from main import cfg
 
 
 """
@@ -92,7 +91,7 @@ class BaseModule(nn.Module):
 
 
 class ConvBertForBinaryClassification(BaseModule):
-    def __init__(self):
+    def __init__(self, cfg):
         if cfg.pooling is None:
             raise ValueError(
                 '`pooling` cannot be `None` in a binary classification task. Expected ["avg", "max"].'
@@ -131,7 +130,7 @@ class ConvBertForBinaryClassification(BaseModule):
 
 
 class ConvBertForMultiClassClassification(BaseModule):
-    def __init__(self):
+    def __init__(self, cfg):
         super(ConvBertForMultiClassClassification, self).__init__(
             input_dim=cfg.input_dim,
             nhead=cfg.nhead,
@@ -170,7 +169,7 @@ class ConvBertForMultiClassClassification(BaseModule):
 
 
 class ConvBertForRegression(BaseModule):
-    def __init__(self):
+    def __init__(self, cfg):
         if cfg.pooling is None:
             raise ValueError(
                 '`pooling` cannot be `None` in a regression task. Expected ["avg", "max"].'
@@ -222,7 +221,7 @@ class ConvBertForRegression(BaseModule):
 
 
 class ConvBertForMultiLabelClassification(BaseModule):
-    def __init__(self):
+    def __init__(self, cfg):
         super(ConvBertForMultiLabelClassification, self).__init__(
             input_dim=cfg.input_dim,
             nhead=cfg.nhead,
