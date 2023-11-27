@@ -74,7 +74,7 @@ class cfg:
     hyper_epochs = 1 # number of hyperparameter epochs
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     seed = 7
-    test = True
+    test = False
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Configurations for the model.')
