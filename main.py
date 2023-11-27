@@ -36,14 +36,14 @@ class cfg:
     model_path = 'facebook/esm2_t6_8M_UR50D' # paths
     T5 = False
     weight_path = None
-    data_path = 'lhallee/Thermostability_reg'
+    data_path = 'lhallee/dl_binary_reg'
     output_dir = './out'
     log_dir = './log.csv'
-    task_type = 'regression' # settings
-    # binary, mutliclass, multilabel, regression, peft
+    task_type = 'binary' # settings
+    # binary, mutliclass, multilabel, regression
     model_type = 'convbert'
     # linear, linear_backbone, convbert, convbert_backbone
-    peft = False
+    peft = True
     cls = False     # embed type cls, average, full
     average = False
     full = True # if full batch_size must be 1
@@ -61,9 +61,9 @@ class cfg:
     grad_accum = 16
     weight_decay = 0.01
     fp16 = False
-    trainer_epochs = 200
+    trainer_epochs = 1
     trim_len = False # trim length of seqs when loading datasets
-    patience = 10
+    patience = 1
     max_length = None
     r = 64 # Lora
     lora_alpha = 128
@@ -120,41 +120,7 @@ def parse_args():
     return parser.parse_args()
 
 
-def update_cfg():
-    args = parse_args()
-    cfg.project_name = args.project_name
-    cfg.wandb_api_key = args.wandb_api_key
-    cfg.use_wandb = args.use_wandb
-    cfg.model_path = args.model_path
-    cfg.T5 = args.T5
-    cfg.weight_path = args.weight_path
-    cfg.data_path = args.data_path
-    cfg.output_dir = args.output_dir
-    cfg.log_dir = args.log_dir
-    cfg.task_type = args.task_type
-    cfg.model_type = args.model_type
-    cfg.peft = args.peft
-    cfg.cls = args.cls
-    cfg.average = args.average
-    cfg.full = args.full
-    cfg.hidden_dim = args.hidden_dim
-    cfg.dropout = args.dropout
-    cfg.num_layers = args.num_layers
-    cfg.nhead = args.nhead
-    cfg.kernel = args.kernel
-    cfg.pooling = args.pooling
-    cfg.lr = args.lr
-    cfg.batch_size = args.batch_size
-    cfg.grad_accum = args.grad_accum
-    cfg.weight_decay = args.weight_decay
-    cfg.fp16 = args.fp16
-    cfg.trainer_epochs = args.trainer_epochs
-    cfg.trim_len = args.trim_len
-    cfg.patience = args.patience
-    cfg.max_length = args.max_length
-    cfg.r = args
-    cfg.seed = args.seed
-    cfg.test = args.test
+
 
 
 def main():
@@ -233,7 +199,40 @@ def main():
 
 
 if __name__ == "__main__":
-    update_cfg()
+    args = parse_args()
+    cfg.project_name = args.project_name
+    cfg.wandb_api_key = args.wandb_api_key
+    cfg.use_wandb = args.use_wandb
+    cfg.model_path = args.model_path
+    cfg.T5 = args.T5
+    cfg.weight_path = args.weight_path
+    cfg.data_path = args.data_path
+    cfg.output_dir = args.output_dir
+    cfg.log_dir = args.log_dir
+    cfg.task_type = args.task_type
+    cfg.model_type = args.model_type
+    cfg.peft = args.peft
+    cfg.cls = args.cls
+    cfg.average = args.average
+    cfg.full = args.full
+    cfg.hidden_dim = args.hidden_dim
+    cfg.dropout = args.dropout
+    cfg.num_layers = args.num_layers
+    cfg.nhead = args.nhead
+    cfg.kernel = args.kernel
+    cfg.pooling = args.pooling
+    cfg.lr = args.lr
+    cfg.batch_size = args.batch_size
+    cfg.grad_accum = args.grad_accum
+    cfg.weight_decay = args.weight_decay
+    cfg.fp16 = args.fp16
+    cfg.trainer_epochs = args.trainer_epochs
+    cfg.trim_len = args.trim_len
+    cfg.patience = args.patience
+    cfg.max_length = args.max_length
+    cfg.r = args
+    cfg.seed = args.seed
+    cfg.test = args.test
     from trainer import train
     from dataset_zoo import *
     from model_zoo import *

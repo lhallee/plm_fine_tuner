@@ -49,7 +49,7 @@ class FineTuneDatasetEmbeds(data.Dataset):
     def __getitem__(self, idx):
         embedding = self.embeddings[idx]
         label = self.labels[idx]
-        if self.task_type == 'binary':
+        if self.task_type == 'binary' and not self.peft:
             label_encoded = torch.tensor([1-label, label], dtype=torch.float)
         elif self.task_type == 'multiclass':
             label_encoded = torch.zeros(self.num_classes, dtype=torch.float)
@@ -73,7 +73,7 @@ class FineTuneDatasetCollator(data.Dataset):
 
     def __getitem__(self, idx):
         label = self.ds['labels'][idx]
-        if self.task_type == 'binary':
+        if self.task_type == 'binary' and not self.peft:
             label_encoded = torch.tensor([1-label, label], dtype=torch.float)
         elif self.task_type == 'multiclass':
             label_encoded = torch.zeros(self.num_classes, dtype=torch.float)

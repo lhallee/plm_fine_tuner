@@ -2,6 +2,7 @@ import torch
 from torch.nn import functional as F
 from sklearn.metrics import accuracy_score, mean_squared_error, r2_score, f1_score, recall_score, precision_score
 from transformers import EvalPrediction
+from scipy.stats import spearmanr
 from main import cfg
 
 def count_f1_max(pred, target):
@@ -78,10 +79,13 @@ def regression_metrics(predictions, labels):
 
     mse = mean_squared_error(y_true_np, preds_np)
     r2 = r2_score(y_true_np, preds_np)
+    spearman_corr, pval = spearmanr(y_true_np, preds_np)
 
     metrics = {
         'MSE': mse,
-        'R2': r2
+        'R2': r2,
+        'spearman': spearman_corr,
+        'pval': pval
     }
     return metrics
 
