@@ -201,7 +201,7 @@ class ConvBertForRegression(BaseModule):
 
     def _compute_loss(self, logits, labels):
         if labels is not None:
-            loss = F.mse_loss(logits, labels.squeeze(0))
+            loss = F.mse_loss(logits.squeeze(), labels)
         else:
             loss = None
         return loss
