@@ -44,9 +44,8 @@ class cfg:
     log_dir = './log.csv'
     task_type = 'binary' # settings
     # binary, mutliclass, multilabel, regression
-    model_type = 'convbert'
-    # linear, linear_backbone, convbert, convbert_backbone
-    peft = False
+    model_type = 'peft'
+    # linear, linear_backbone, convbert, convbert_backbone, peft
     cls = False     # embed type cls, average, full
     average = False
     full = True # if full batch_size must be 1
@@ -93,7 +92,6 @@ def parse_args():
     parser.add_argument('--log_dir', default=cfg.log_dir, type=str)
     parser.add_argument('--task_type', default=cfg.task_type, type=str)
     parser.add_argument('--model_type', default=cfg.model_type, type=str)
-    parser.add_argument('--peft', default=cfg.peft, type=bool)
     parser.add_argument('--cls', default=cfg.cls, type=bool)
     parser.add_argument('--average', default=cfg.average, type=bool)
     parser.add_argument('--full', default=cfg.full, type=bool)
@@ -128,10 +126,39 @@ def main():
     embed = False
     datacollator = None
     train_data, valid_data, test_data = get_data(cfg)
-    if cfg.peft:
-        from peft import LoraConfig, get_peft_model, TaskType
+    
+    if valid_data is None:
+        from sklearn.model_selection import train_test_split
+        train_data, valid_data = train_test_split(train_data, test_size=0.1, random_state=cfg.seed)
+    if test_data is None:
+        test_data = valid_data
+
+    if cfg.T5: # load backbone
+        from transformers import T5EncoderModel
+        backbone = T5EncoderModel.from_pretrained(cfg.model_path, output_hidden_states=True)
+        if cfg.model_type == 'peft':
+            from model_zoo import T5EncoderForSequenceClassification
+            backbone_config = backbone.config
+            backbone_config.num_labels = cfg.num_labels
+            backbone = T5EncoderForSequenceClassification(backbone, backbone_config)
+    elif cfg.model_type != 'peft':
+        backbone = AutoModel.from_pretrained(cfg.model_path, output_hidden_states=True)
+    elif cfg.model_type == 'peft':
         from transformers import AutoModelForSequenceClassification
-        backbone = AutoModelForSequenceClassification.from_pretrained(cfg.model_path)
+        backbone = AutoModelForSequenceClassification.from_pretrained(cfg.model_path, num_labels=cfg.num_labels)
+
+    tokenizer = AutoTokenizer.from_pretrained(cfg.model_path)
+    if cfg.weight_path is not None:
+        backbone.load_state_dict(torch.load(cfg.weight_path))
+    
+    cfg.input_dim = backbone.config.hidden_size
+    cfg.hidden_dim = backbone.config.hidden_size
+
+    print(cfg.__dict__)
+
+    if cfg.model_type == 'peft': # load model
+        # current support for CLS proj models
+        from peft import LoraConfig, get_peft_model, TaskType
         lora_config = LoraConfig(
             r=cfg.r,
             lora_alpha=cfg.lora_alpha,
@@ -143,33 +170,22 @@ def main():
         )
         model = get_peft_model(backbone, lora_config)
         model.print_trainable_parameters()
-    elif cfg.T5:
-        from transformers import T5EncoderModel
-        backbone = T5EncoderModel.from_pretrained(cfg.model_path, output_hidden_states=True)
-        backbone.to(cfg.device)
+    elif cfg.model_type == 'linear':
+        embed = True
+        model = LinearClassifier(cfg)
+    elif cfg.model_type == 'linear_backbone':
+        model = LinearHeadWithBackbone(backbone=backbone, cfg=cfg)
+    elif cfg.model_type == 'convbert':
+        embed = True
+        model = ConvBert(cfg)
+    elif cfg.model_type == 'convbert_backbone':
+        model = ConvBertWithBackbone(backbone=backbone, cfg=cfg)
     else:
-        backbone = AutoModel.from_pretrained(cfg.model_path, output_hidden_states=True)
-        backbone.to(cfg.device)
-    tokenizer = AutoTokenizer.from_pretrained(cfg.model_path)
-    if cfg.weight_path is not None:
-        backbone.load_state_dict(torch.load(cfg.weight_path))
-    cfg.input_dim = backbone.config.hidden_size
-    cfg.hidden_dim = backbone.config.hidden_size
-    print(cfg.__dict__)
-    if cfg.peft == False:
-        if cfg.model_type == 'linear':
-            embed = True
-            model = LinearClassifier(cfg)
-        elif cfg.model_type == 'linear_backbone':
-            model = LinearHeadWithBackbone(backbone=backbone, cfg=cfg)
-        elif cfg.model_type == 'convbert':
-            embed = True
-            model = ConvBert(cfg)
-        elif cfg.model_type == 'convbert_backbone':
-            model = ConvBertWithBackbone(backbone=backbone, cfg=cfg)
-        else:
-            print('Incorrect model type')
+        print('Incorrect model type')
+
     if embed:
+        backbone.to(cfg.device)
+        backbone.eval()
         train_seqs, train_labels = get_seqs(train_data)
         valid_seqs, valid_labels = get_seqs(valid_data)
         test_seqs, test_labels = get_seqs(test_data)
@@ -192,7 +208,6 @@ def main():
         valid_dataset = FineTuneDatasetCollator(valid_data, cfg)
         test_dataset = FineTuneDatasetCollator(test_data, cfg)
         datacollator = collate_fn(tokenizer)
-        backbone.train()
 
     trainer = train(model, train_dataset, valid_dataset, cfg=cfg, data_collator=datacollator)
     predictions, labels, metrics_output = trainer.predict(test_dataset)
@@ -212,7 +227,6 @@ if __name__ == "__main__":
     cfg.log_dir = args.log_dir
     cfg.task_type = args.task_type
     cfg.model_type = args.model_type
-    cfg.peft = args.peft
     cfg.cls = args.cls
     cfg.average = args.average
     cfg.full = args.full
@@ -231,7 +245,7 @@ if __name__ == "__main__":
     cfg.trim_len = args.trim_len
     cfg.patience = args.patience
     cfg.max_length = args.max_length
-    cfg.r = args
+    cfg.r = args.r
     cfg.seed = args.seed
     cfg.test = args.test
     torch.manual_seed(cfg.seed)

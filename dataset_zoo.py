@@ -4,6 +4,7 @@ from datasets import load_dataset
 from torch.utils import data
 from tqdm.auto import tqdm
 
+
 def embed_dataset(model, tokenizer, sequences, cfg):
     model.eval()
     inputs_embedding = []
@@ -39,45 +40,27 @@ class FineTuneDatasetEmbeds(data.Dataset):
     def __init__(self, embeddings, labels, cfg):
         self.embeddings = embeddings
         self.labels = labels
-        self.task_type = cfg.task_type
-        self.num_classes = cfg.num_labels
-        self.peft = cfg.peft
 
-    def __getitem__(self, idx):
-        embedding = self.embeddings[idx]
-        label = self.labels[idx]
-        if self.task_type == 'binary' and not self.peft:
-            label_encoded = torch.tensor([1-label, label], dtype=torch.float)
-        elif self.task_type == 'multiclass':
-            label_encoded = torch.zeros(self.num_classes, dtype=torch.float)
-            label_encoded[label] = 1.0
-        else:
-            label_encoded = torch.tensor(label, dtype=torch.float)
-        return {'embeddings': torch.tensor(embedding).squeeze(0), 'labels': label_encoded}
     def __len__(self):
         return len(self.labels)
+
+    def __getitem__(self, idx):
+        label = torch.tensor(self.labels[idx], dtype=torch.long)
+        return {'embeddings': torch.tensor(self.embeddings[idx]).squeeze(0), 'labels': label}
+
 
 
 class FineTuneDatasetCollator(data.Dataset):
     def __init__(self, ds, cfg):
-        self.ds = ds
-        self.task_type = cfg.task_type
-        self.num_classes = cfg.num_labels
-        self.peft = cfg.peft
+        self.seqs = ds['seqs']
+        self.labels = ds['labels']
 
     def __len__(self):
-        return self.ds.num_rows
+        return len(self.seqs)
 
     def __getitem__(self, idx):
-        label = self.ds['labels'][idx]
-        if self.task_type == 'binary' and not self.peft:
-            label_encoded = torch.tensor([1-label, label], dtype=torch.float)
-        elif self.task_type == 'multiclass':
-            label_encoded = torch.zeros(self.num_classes, dtype=torch.float)
-            label_encoded[label] = 1.0
-        else:
-            label_encoded = torch.tensor(label, dtype=torch.float)
-        return self.ds['seqs'][idx], label_encoded
+        label = torch.tensor(self.labels[idx], dtype=torch.long)
+        return self.seqs[idx], label
 
 
 def collate_fn(tokenizer):
@@ -88,8 +71,6 @@ def collate_fn(tokenizer):
             seqs,
             padding='longest',
             return_tensors='pt',
-            truncation=True,
-            max_length=cfg.max_length,
             return_token_type_ids=False,
         )
         input_ids.update({'labels': labels})
@@ -99,24 +80,29 @@ def collate_fn(tokenizer):
 
 def get_data(cfg):
     dataset = load_dataset(cfg.data_path)
-    train_set = dataset['train']
-    valid_set = dataset['valid']
-    test_set = dataset['test']
-    if cfg.trim_len:
+    train_set = dataset.get('train', None)
+    valid_set = dataset.get('valid', None)
+    test_set = dataset.get('test', None)
+    if cfg.trim_len and train_set is not None:
         train_set = train_set.filter(lambda x: len(x['seqs'].replace(' ', '')) <= cfg.max_length)
+    if cfg.trim_len and valid_set is not None:
         valid_set = valid_set.filter(lambda x: len(x['seqs'].replace(' ', '')) <= cfg.max_length)
+    if cfg.trim_len and test_set is not None:
         test_set = test_set.filter(lambda x: len(x['seqs'].replace(' ', '')) <= cfg.max_length)
     if cfg.task_type == 'multilabel':
         import ast
-        train_set = train_set.map(lambda example: {'labels': ast.literal_eval(example['labels'])})
-        valid_set = valid_set.map(lambda example: {'labels': ast.literal_eval(example['labels'])})
-        test_set = test_set.map(lambda example: {'labels': ast.literal_eval(example['labels'])})
+        if train_set is not None:
+            train_set = train_set.map(lambda example: {'labels': ast.literal_eval(example['labels'])})
+        if valid_set is not None:
+            valid_set = valid_set.map(lambda example: {'labels': ast.literal_eval(example['labels'])})
+        if test_set is not None:
+            test_set = test_set.map(lambda example: {'labels': ast.literal_eval(example['labels'])})
     try:
-        num_labels = len(train_set['labels'][0])
+        num_labels = len(train_set['labels'][0]) if train_set is not None else 0
     except:
-        num_labels = len(np.unique(train_set['labels']))
+        num_labels = len(np.unique(train_set['labels'])) if train_set is not None else 0
     if cfg.task_type == 'regression':
-        cfg.traing_labels_mean = sum(train_set['labels']) / len(train_set['labels'])
+        cfg.traing_labels_mean = sum(train_set['labels']) / len(train_set['labels']) if train_set is not None else 0
         num_labels = 1
     cfg.num_labels = num_labels
     return train_set, valid_set, test_set
