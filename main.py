@@ -33,49 +33,69 @@ def log_results(results):
 
 
 class cfg:
-    project_name = 'test' # wandb
+     # wandb
+    project_name = 'test'
     wandb_api_key = None
     use_wandb = False
-    model_path = 'facebook/esm2_t6_8M_UR50D' # paths
-    T5 = False
-    weight_path = None
+
+    # paths
+    model_path = 'facebook/esm2_t6_8M_UR50D'
     data_path = 'lhallee/dl_binary_reg'
     output_dir = './out'
     log_dir = './log.csv'
-    task_type = 'binary' # settings
-    # binary, mutliclass, multilabel, regression
-    model_type = 'peft'
-    # linear, linear_backbone, convbert, convbert_backbone, peft
-    cls = False     # embed type cls, average, full
-    average = False
-    full = True # if full batch_size must be 1
+    weight_path = None
+
+    T5 = False
+
+    # settings
+    task_type = 'binary' # binary, mutliclass, multilabel, regression
+    model_type = 'convert' # linear, linear_backbone, convbert, convbert_backbone, peft
     dropout = 0.1
     num_layers = 1
     nhead = 4
     kernel = 7
     pooling='max'
-    input_dim = None    # to get updated by code
-    hidden_dim = None
-    num_labels = None
-    training_labels_mean = None
     lr = 1e-4
     batch_size = 1
     grad_accum = 16
     weight_decay = 0.01
-    fp16 = False
     trainer_epochs = 200
-    trim_len = False # trim length of seqs when loading datasets
     patience = 10
+    trim_len = False # trim length of seqs when loading datasets
+    fp16 = False
+    seed = 7
+
+    # embed type - cls, average, full
+    cls = False     
+    average = False
+    full = True # if full batch_size must be 1
+
+    # holders
+    input_dim = None
+    hidden_dim = None
+    num_labels = None
+    training_labels_mean = None
     max_length = None
-    r = 64 # Lora
+
+    # Lora
+    r = 64
     lora_alpha = 128
     target_modules = ['query', 'key', 'value', 'pooler/dense']
     lora_dropout = 0.0
     bias = 'none'
+
+    # hyperparameter tuning
     count = 1 # number of hyperparameter runs
     hyper_epochs = 1 # number of hyperparameter epochs
+
+    # MOESM
+    MOE = False
+    num_local_experts = 8
+    num_experts_per_tok = 2
+    moe_type = 'Model'
+    seed_model = True
+
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    seed = 7
     test = False
 
 
@@ -95,7 +115,6 @@ def parse_args():
     parser.add_argument('--cls', default=cfg.cls, type=bool)
     parser.add_argument('--average', default=cfg.average, type=bool)
     parser.add_argument('--full', default=cfg.full, type=bool)
-    parser.add_argument('--hidden_dim', default=cfg.hidden_dim, type=int)
     parser.add_argument('--dropout', default=cfg.dropout, type=float)
     parser.add_argument('--num_layers', default=cfg.num_layers, type=int)
     parser.add_argument('--nhead', default=cfg.nhead, type=int)
@@ -119,6 +138,11 @@ def parse_args():
     parser.add_argument('--seed', default=cfg.seed, type=int)
     parser.add_argument('--kernel', default=cfg.kernel, type=int)
     parser.add_argument('--test', default=cfg.test, type=bool)
+    parser.add_argument('--MOE', default=cfg.MOE, type=bool)
+    parser.add_argument('--num_local_experts', default=cfg.num_local_experts, type=int)
+    parser.add_argument('--num_experts_per_tok', default=cfg.num_experts_per_tok, type=int)
+    parser.add_argument('--moe_type', default=cfg.moe_type, type=str)
+    parser.add_argument('--seed_model', default=cfg.seed_model, type=bool)
     return parser.parse_args()
 
 
@@ -146,6 +170,18 @@ def main():
     elif cfg.model_type == 'peft':
         from transformers import AutoModelForSequenceClassification
         backbone = AutoModelForSequenceClassification.from_pretrained(cfg.model_path, num_labels=cfg.num_labels)
+    elif cfg.MOE:
+        try:
+            from modeling_moesm import MoEsmLoadWeights
+            loader = MoEsmLoadWeights(cfg.model_path, cfg.moe_type, cfg.num_local_experts, cfg.num_experts_per_tok, cfg.num_labels)
+            if cfg.seed_model:
+                model = loader.get_seeded_model()
+            else:
+                model = loader.get_pretrained_model()
+        except:
+            import sys
+            print('Make sure modeling_moesm.py is in the directory')
+            sys.exit()
 
     tokenizer = AutoTokenizer.from_pretrained(cfg.model_path)
     if cfg.weight_path is not None:
@@ -248,6 +284,11 @@ if __name__ == "__main__":
     cfg.r = args.r
     cfg.seed = args.seed
     cfg.test = args.test
+    cfg.MOE = args.MOE
+    cfg.num_experts_per_tok = args.num_experts_per_tok
+    cfg.num_local_experts = args.num_local_experts
+    cfg.moe_type = args.moe_type
+    cfg.seed_model = args.seed_model
     torch.manual_seed(cfg.seed)
     np.random.seed(cfg.seed)
     random.seed(cfg.seed)
