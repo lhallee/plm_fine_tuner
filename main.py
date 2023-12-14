@@ -49,7 +49,7 @@ class cfg:
 
     # settings
     task_type = 'binary' # binary, mutliclass, multilabel, regression
-    model_type = 'convert' # linear, linear_backbone, convbert, convbert_backbone, peft
+    model_type = 'convbert' # linear, linear_backbone, convbert, convbert_backbone, peft
     dropout = 0.1
     num_layers = 1
     nhead = 4
@@ -128,6 +128,7 @@ def parse_args():
     parser.add_argument('--trim_len', default=cfg.trim_len, type=bool)
     parser.add_argument('--patience', default=cfg.patience, type=int)
     parser.add_argument('--max_length', default=cfg.max_length, type=int)
+    parser.add_argument('--hidden_dim', default=cfg.hidden_dim, type=int)
     parser.add_argument('--r', default=cfg.r, type=int)
     parser.add_argument('--lora_alpha', default=cfg.lora_alpha, type=int)
     parser.add_argument('--target_modules', nargs='+', default=cfg.target_modules, type=str)
@@ -173,7 +174,7 @@ def main():
     elif cfg.MOE:
         try:
             from modeling_moesm import MoEsmLoadWeights
-            loader = MoEsmLoadWeights(cfg.model_path, cfg.moe_type, cfg.num_local_experts, cfg.num_experts_per_tok, cfg.num_labels)
+            loader = MoEsmLoadWeights(cfg.model_path, cfg.moe_type, cfg.num_local_experts, cfg.num_experts_per_tok, True, cfg.num_labels)
             if cfg.seed_model:
                 model = loader.get_seeded_model()
             else:
@@ -182,6 +183,8 @@ def main():
             import sys
             print('Make sure modeling_moesm.py is in the directory')
             sys.exit()
+    else:
+        print('Incorrect settings, review and try again')
 
     tokenizer = AutoTokenizer.from_pretrained(cfg.model_path)
     if cfg.weight_path is not None:

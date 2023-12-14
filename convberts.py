@@ -113,7 +113,7 @@ class ConvBertForBinaryClassification(BaseModule):
 
     def _compute_loss(self, logits, labels):
         if labels is not None:
-            loss = F.binary_cross_entropy_with_logits(logits, labels)
+            loss = F.cross_entropy(logits.view(-1, logits.size(-1)), labels.view(-1))
         else:
             loss = None
         return loss
