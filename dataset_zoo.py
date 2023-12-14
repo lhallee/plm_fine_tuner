@@ -40,12 +40,13 @@ class FineTuneDatasetEmbeds(data.Dataset):
     def __init__(self, embeddings, labels, cfg):
         self.embeddings = embeddings
         self.labels = labels
+        self.task_type = cfg.task_type
 
     def __len__(self):
         return len(self.labels)
 
     def __getitem__(self, idx):
-        label = torch.tensor(self.labels[idx], dtype=torch.long)
+        label = torch.tensor(self.labels[idx], dtype=torch.long) if self.task_type != 'multilabel' else torch.tensor(self.labels[idx], dtype=torch.float)
         return {'embeddings': torch.tensor(self.embeddings[idx]).squeeze(0), 'labels': label}
 
 
@@ -54,12 +55,13 @@ class FineTuneDatasetCollator(data.Dataset):
     def __init__(self, ds, cfg):
         self.seqs = ds['seqs']
         self.labels = ds['labels']
+        self.task_type = cfg.task_type
 
     def __len__(self):
         return len(self.seqs)
 
     def __getitem__(self, idx):
-        label = torch.tensor(self.labels[idx], dtype=torch.long)
+        label = torch.tensor(self.labels[idx], dtype=torch.long) if self.task_type != 'multilabel' else torch.tensor(self.labels[idx], dtype=torch.float)
         return self.seqs[idx], label
 
 

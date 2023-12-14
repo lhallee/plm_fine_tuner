@@ -168,7 +168,7 @@ def main():
             backbone = T5EncoderForSequenceClassification(backbone, backbone_config)
     elif cfg.model_type != 'peft':
         backbone = AutoModel.from_pretrained(cfg.model_path, output_hidden_states=True)
-    elif cfg.model_type == 'peft':
+    elif cfg.model_type == 'peft' and not cfg.T5:
         from transformers import AutoModelForSequenceClassification
         backbone = AutoModelForSequenceClassification.from_pretrained(cfg.model_path, num_labels=cfg.num_labels)
     elif cfg.MOE:
